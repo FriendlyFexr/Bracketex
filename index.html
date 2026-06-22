@@ -3,46 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bracket Validator</title>
+    <title>Live Bracket Validator</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; background-color: #f9f9f9; }
-        .container { max-width: 400px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input { padding: 10px; font-size: 16px; width: 80%; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
-        button:hover { background-color: #0056b3; }
-        #result { margin-top: 20px; font-weight: bold; font-size: 22px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 50px; text-align: center; background-color: #f4f6f9; }
+        .container { max-width: 500px; margin: 0 auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { color: #333; margin-bottom: 20px; }
+        
+        /* Stylized contenteditable div acting as our input box */
+        .editor-box {
+            width: 90%;
+            min-height: 40px;
+            margin: 0 auto 15px auto;
+            padding: 12px;
+            font-size: 22px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            text-align: left;
+            outline: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #fff;
+            transition: border-color 0.2s;
+        }
+        .editor-box:focus { border-color: #007bff; }
+        
+        /* Placeholder styling for our custom editable div */
+        .editor-box:empty:before {
+            content: attr(data-placeholder);
+            color: #aaa;
+            font-weight: normal;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Bracket Color Coding Rules */
+        .paren { color: #e06c75; }  /* Light Red/Pink for () */
+        .bracket { color: #98c379; } /* Green for [] */
+        .brace { color: #61afef; }   /* Blue for {} */
+        .invalid-char { color: #abb2bf; font-weight: normal; } /* Grey for random text */
+
+        /* Validation Results Styling */
+        #result { margin-top: 20px; font-weight: bold; font-size: 24px; letter-spacing: 1px; }
         .valid { color: #28a745; }
         .invalid { color: #dc3545; }
+        .empty { color: #6c757d; font-size: 16px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Bracket Validator</h2>
-    <input type="text" id="bracketInput" placeholder="Enter brackets e.g. {([])}">
-    <br>
-    <button onclick="validate()">Check</button>
-    <div id="result"></div>
+    <h2>Live Bracket Validator</h2>
+    
+    <div id="bracketInput" class="editor-box" contenteditable="true" data-placeholder="Type brackets here... e.g. {([])}"></div>
+    
+    <div id="result" class="empty">Waiting for input...</div>
 </div>
 
 <script>
-    // Your exact C++ logic translated directly to JavaScript
-    function checkBrackets(input) {
-        let length = input.length;
+    const inputEl = document.getElementById('bracketInput');
+    const resultDiv = document.getElementById('result');
 
-        if (length % 2 !== 0) {
-            return false;
-        }
+    // 1. Core Logic (Your exact C++ logic translated to JS)
+    function checkBrackets(text) {
+        let length = text.length;
+        if (length === 0) return "EMPTY";
+        if (length % 2 !== 0) return "INVALID";
 
         let parenthesesConst = 0; 
         let bracketConst = 0;
         let braceConst = 0;
         let priorityAscendingOrder = "";
 
-        for (let i = 0; i < length; i++) {
-            let ltr = input[i];
+        for (int i = 0; i < length; i++) {
+            let ltr = text[i];
             let isOpening = false;
 
+            if (ltr === 'pointless_placeholder') { continue; } // safe skip
+            
             if (ltr === '(') {
                 parenthesesConst += 1;
                 isOpening = true;
@@ -66,56 +105,87 @@
             }
             else if (ltr === '}') {
                 braceConst -= 1;
+            } else {
+                // If the user types characters that aren't brackets, mark invalid instantly
+                return "INVALID"; 
             }
 
             if (parenthesesConst < 0 || bracketConst < 0 || braceConst < 0) {
-                return false; 
+                return "INVALID"; 
             }
 
             if (!isOpening) {
                 if (priorityAscendingOrder.length === 0) {
-                    return false;
+                    return "INVALID";
                 }
 
                 let currentSpin = "0";
-                let highestPriority = priorityAscendingOrder.slice(-1); // gets the last character
+                let highestPriority = priorityAscendingOrder.slice(-1);
                 
                 if (ltr === ')') { currentSpin = "1"; }
                 else if (ltr === ']') { currentSpin = "2"; }
                 else if (ltr === '}') { currentSpin = "3"; }
 
                 if (currentSpin !== highestPriority) {
-                    return false;
+                    return "INVALID";
                 }
                 else {
-                    priorityAscendingOrder = priorityAscendingOrder.slice(0, -1); // pops the last character
+                    priorityAscendingOrder = priorityAscendingOrder.slice(0, -1);
                 }
             }
         }
 
-        return (parenthesesConst === 0 && bracketConst === 0 && braceConst === 0);
+        return (parenthesesConst === 0 && bracketConst === 0 && braceConst === 0) ? "VALID" : "INVALID";
     }
 
-    function validate() {
-        const input = document.getElementById('bracketInput').value;
-        const resultDiv = document.getElementById('result');
-
-        if (!input) {
-            resultDiv.innerText = "Please enter a sequence.";
-            resultDiv.className = "";
-            return;
+    // 2. Real-time coloring and positioning logic
+    inputEl.addEventListener('input', () => {
+        let rawText = inputEl.innerText;
+        
+        // Save the user's cursor position before refreshing HTML elements
+        let selection = window.getSelection();
+        let offset = selection.focusOffset;
+        
+        // Generate styled HTML string based on bracket character types
+        let coloredHTML = "";
+        for (let char of rawText) {
+            if (char === '(' || char === ')') {
+                coloredHTML += `<span class="paren">${char}</span>`;
+            } else if (char === '[' || char === ']') {
+                coloredHTML += `<span class="bracket">${char}</span>`;
+            } else if (char === '{' || char === '}') {
+                coloredHTML += `<span class="brace">${char}</span>`;
+            } else {
+                coloredHTML += `<span class="invalid-char">${char}</span>`;
+            }
         }
 
-        const isValid = checkBrackets(input);
+        // Apply HTML back to the div container
+        inputEl.innerHTML = coloredHTML;
 
-        if (isValid) {
+        // Restore the cursor position accurately
+        let range = document.createRange();
+        if (inputEl.childNodes.length > 0) {
+            let targetNode = inputEl.childNodes[offset - 1] ? inputEl.childNodes[offset - 1] : inputEl.childNodes[0];
+            range.setStartAfter(targetNode);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        // Run validation check immediately
+        const status = checkBrackets(rawText);
+        if (status === "VALID") {
             resultDiv.innerText = "VALID";
             resultDiv.className = "valid";
-        } else {
+        } else if (status === "INVALID") {
             resultDiv.innerText = "INVALID";
             resultDiv.className = "invalid";
+        } else {
+            resultDiv.innerText = "Waiting for input...";
+            resultDiv.className = "empty";
         }
-    }
+    });
 </script>
 
 </body>
