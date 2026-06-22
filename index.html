@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Bracket Validator</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 50px; text-align: center; background-color: #f4f6f9; }
-        .container { max-width: 500px; margin: 0 auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { color: #333; margin-bottom: 20px; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 50px; 
+            text-align: center; 
+            background-color: #f4f6f9; 
+        }
+        .container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            padding: 30px; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
+        h2 { 
+            color: #333; 
+            margin-bottom: 20px; 
+        }
         
-        /* Stylized contenteditable div acting as our input box */
+        /* The customizable text input area */
         .editor-box {
             width: 90%;
             min-height: 40px;
@@ -27,9 +42,11 @@
             background-color: #fff;
             transition: border-color 0.2s;
         }
-        .editor-box:focus { border-color: #007bff; }
+        .editor-box:focus { 
+            border-color: #007bff; 
+        }
         
-        /* Placeholder styling for our custom editable div */
+        /* Placeholder for empty input area */
         .editor-box:empty:before {
             content: attr(data-placeholder);
             color: #aaa;
@@ -38,14 +55,22 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Bracket Color Coding Rules */
-        .paren { color: #e06c75; }  /* Light Red/Pink for () */
-        .bracket { color: #98c379; } /* Green for [] */
-        .brace { color: #61afef; }   /* Blue for {} */
-        .invalid-char { color: #abb2bf; font-weight: normal; } /* Grey for random text */
+        /* Color schemes for bracket syntax highlighting */
+        .paren { color: #e06c75; }        /* Light Pink/Red for () */
+        .bracket { color: #98c379; }      /* Green for [] */
+        .brace { color: #61afef; }        /* Blue for {} */
+        .invalid-char { 
+            color: #abb2bf; 
+            font-weight: normal; 
+        } 
 
-        /* Validation Results Styling */
-        #result { margin-top: 20px; font-weight: bold; font-size: 24px; letter-spacing: 1px; }
+        /* Validation UI Results */
+        #result { 
+            margin-top: 20px; 
+            font-weight: bold; 
+            font-size: 24px; 
+            letter-spacing: 1px; 
+        }
         .valid { color: #28a745; }
         .invalid { color: #dc3545; }
         .empty { color: #6c757d; font-size: 16px; }
@@ -65,7 +90,7 @@
     const inputEl = document.getElementById('bracketInput');
     const resultDiv = document.getElementById('result');
 
-    // 1. Core Logic (Your exact C++ logic translated to JS)
+    // 1. Core Logic (Your C++ logic ported cleanly to JS)
     function checkBrackets(text) {
         let length = text.length;
         if (length === 0) return "EMPTY";
@@ -76,11 +101,9 @@
         let braceConst = 0;
         let priorityAscendingOrder = "";
 
-        for (int i = 0; i < length; i++) {
+        for (let i = 0; i < length; i++) {
             let ltr = text[i];
             let isOpening = false;
-
-            if (ltr === 'pointless_placeholder') { continue; } // safe skip
             
             if (ltr === '(') {
                 parenthesesConst += 1;
@@ -106,7 +129,6 @@
             else if (ltr === '}') {
                 braceConst -= 1;
             } else {
-                // If the user types characters that aren't brackets, mark invalid instantly
                 return "INVALID"; 
             }
 
@@ -138,15 +160,60 @@
         return (parenthesesConst === 0 && bracketConst === 0 && braceConst === 0) ? "VALID" : "INVALID";
     }
 
-    // 2. Real-time coloring and positioning logic
+    // Helper to calculate total character offset of the cursor
+    function getCaretCharacterOffset(element) {
+        let caretOffset = 0;
+        const doc = element.ownerDocument || element.document;
+        const win = doc.defaultView || doc.parentWindow;
+        const sel = win.getSelection();
+        if (sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(element);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            caretOffset = preCaretRange.toString().length;
+        }
+        return caretOffset;
+    }
+
+    // Helper to restore cursor position based on character count
+    function setCaretPosition(element, offset) {
+        let charCount = 0;
+        let type = document.createRange();
+        type.setStart(element, 0);
+        type.collapse(true);
+        
+        let nodeStack = [element], node, found = false;
+        
+        while (!found && (node = nodeStack.pop())) {
+            if (node.nodeType === 3) { // Text node
+                let nextCharCount = charCount + node.length;
+                if (offset >= charCount && offset <= nextCharCount) {
+                    type.setStart(node, offset - charCount);
+                    type.collapse(true);
+                    found = true;
+                }
+                charCount = nextCharCount;
+            } else {
+                let i = node.childNodes.length;
+                while (i--) {
+                    nodeStack.push(node.childNodes[i]);
+                }
+            }
+        }
+        
+        let sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(type);
+    }
+
+    // 2. Live-checking and colorizer runtime engine
     inputEl.addEventListener('input', () => {
         let rawText = inputEl.innerText;
         
-        // Save the user's cursor position before refreshing HTML elements
-        let selection = window.getSelection();
-        let offset = selection.focusOffset;
+        // Save absolute cursor position character index
+        let savedOffset = getCaretCharacterOffset(inputEl);
         
-        // Generate styled HTML string based on bracket character types
         let coloredHTML = "";
         for (let char of rawText) {
             if (char === '(' || char === ')') {
@@ -160,20 +227,14 @@
             }
         }
 
-        // Apply HTML back to the div container
         inputEl.innerHTML = coloredHTML;
 
-        // Restore the cursor position accurately
-        let range = document.createRange();
-        if (inputEl.childNodes.length > 0) {
-            let targetNode = inputEl.childNodes[offset - 1] ? inputEl.childNodes[offset - 1] : inputEl.childNodes[0];
-            range.setStartAfter(targetNode);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
+        // Restore cursor based on absolute index count
+        if (rawText.length > 0) {
+            setCaretPosition(inputEl, savedOffset);
         }
 
-        // Run validation check immediately
+        // Output validation logic execution
         const status = checkBrackets(rawText);
         if (status === "VALID") {
             resultDiv.innerText = "VALID";
