@@ -5,55 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bracket Validator</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
-        input { padding: 10px; font-size: 16px; width: 250px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        #result { margin-top: 20px; font-weight: bold; font-size: 20px; }
-        .valid { color: green; }
-        .invalid { color: red; }
+        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; background-color: #f9f9f9; }
+        .container { max-width: 400px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input { padding: 10px; font-size: 16px; width: 80%; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background-color: #0056b3; }
+        #result { margin-top: 20px; font-weight: bold; font-size: 22px; }
+        .valid { color: #28a745; }
+        .invalid { color: #dc3545; }
     </style>
 </head>
 <body>
 
-    <h2>Bracket Sequence Validator</h2>
+<div class="container">
+    <h2>Bracket Validator</h2>
     <input type="text" id="bracketInput" placeholder="Enter brackets e.g. {([])}">
-    <button onclick="validateBrackets()">Check</button>
-
+    <br>
+    <button onclick="validate()">Check</button>
     <div id="result"></div>
+</div>
 
-    <script>
-        async function validateBrackets() {
-            const input = document.getElementById('bracketInput').value;
-            const resultDiv = document.getElementById('result');
-            
-            if (!input) {
-                resultDiv.innerText = "Please enter some brackets.";
-                resultDiv.className = "";
-                return;
+<script>
+    // Your exact C++ logic translated directly to JavaScript
+    function checkBrackets(input) {
+        let length = input.length;
+
+        if (length % 2 !== 0) {
+            return false;
+        }
+
+        let parenthesesConst = 0; 
+        let bracketConst = 0;
+        let braceConst = 0;
+        let priorityAscendingOrder = "";
+
+        for (let i = 0; i < length; i++) {
+            let ltr = input[i];
+            let isOpening = false;
+
+            if (ltr === '(') {
+                parenthesesConst += 1;
+                isOpening = true;
+                priorityAscendingOrder += "1";
+            }
+            else if (ltr === ')') {
+                parenthesesConst -= 1;
+            }
+            else if (ltr === '[') {
+                isOpening = true;
+                bracketConst += 1;
+                priorityAscendingOrder += "2";
+            }
+            else if (ltr === ']') {
+                bracketConst -= 1;
+            }
+            else if (ltr === '{') {
+                isOpening = true;
+                braceConst += 1;
+                priorityAscendingOrder += "3";
+            }
+            else if (ltr === '}') {
+                braceConst -= 1;
             }
 
-            try {
-                // Sending the input to our Python backend
-                const response = await fetch('http://127.0.0.1:5000/validate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ brackets: input })
-                });
-                
-                const data = await response.json();
-                
-                // Display the output from the C++ file
-                resultDiv.innerText = data.result;
-                if (data.result.trim() === "Valid") {
-                    resultDiv.className = "valid";
-                } else {
-                    resultDiv.className = "invalid";
+            if (parenthesesConst < 0 || bracketConst < 0 || braceConst < 0) {
+                return false; 
+            }
+
+            if (!isOpening) {
+                if (priorityAscendingOrder.length === 0) {
+                    return false;
                 }
-            } catch (error) {
-                resultDiv.innerText = "Error connecting to server.";
-                resultDiv.className = "invalid";
+
+                let currentSpin = "0";
+                let highestPriority = priorityAscendingOrder.slice(-1); // gets the last character
+                
+                if (ltr === ')') { currentSpin = "1"; }
+                else if (ltr === ']') { currentSpin = "2"; }
+                else if (ltr === '}') { currentSpin = "3"; }
+
+                if (currentSpin !== highestPriority) {
+                    return false;
+                }
+                else {
+                    priorityAscendingOrder = priorityAscendingOrder.slice(0, -1); // pops the last character
+                }
             }
         }
-    </script>
+
+        return (parenthesesConst === 0 && bracketConst === 0 && braceConst === 0);
+    }
+
+    function validate() {
+        const input = document.getElementById('bracketInput').value;
+        const resultDiv = document.getElementById('result');
+
+        if (!input) {
+            resultDiv.innerText = "Please enter a sequence.";
+            resultDiv.className = "";
+            return;
+        }
+
+        const isValid = checkBrackets(input);
+
+        if (isValid) {
+            resultDiv.innerText = "VALID";
+            resultDiv.className = "valid";
+        } else {
+            resultDiv.innerText = "INVALID";
+            resultDiv.className = "invalid";
+        }
+    }
+</script>
+
 </body>
 </html>
