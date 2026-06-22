@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bracket Validator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
+        input { padding: 10px; font-size: 16px; width: 250px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #result { margin-top: 20px; font-weight: bold; font-size: 20px; }
+        .valid { color: green; }
+        .invalid { color: red; }
+    </style>
+</head>
+<body>
+
+    <h2>Bracket Sequence Validator</h2>
+    <input type="text" id="bracketInput" placeholder="Enter brackets e.g. {([])}">
+    <button onclick="validateBrackets()">Check</button>
+
+    <div id="result"></div>
+
+    <script>
+        async function validateBrackets() {
+            const input = document.getElementById('bracketInput').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!input) {
+                resultDiv.innerText = "Please enter some brackets.";
+                resultDiv.className = "";
+                return;
+            }
+
+            try {
+                // Sending the input to our Python backend
+                const response = await fetch('http://127.0.0.1:5000/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brackets: input })
+                });
+                
+                const data = await response.json();
+                
+                // Display the output from the C++ file
+                resultDiv.innerText = data.result;
+                if (data.result.trim() === "Valid") {
+                    resultDiv.className = "valid";
+                } else {
+                    resultDiv.className = "invalid";
+                }
+            } catch (error) {
+                resultDiv.innerText = "Error connecting to server.";
+                resultDiv.className = "invalid";
+            }
+        }
+    </script>
+</body>
+</html>
